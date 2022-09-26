@@ -1,0 +1,5 @@
+https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
+https://crypto.stackexchange.com/questions/89444/ec-scalar-multiplication-with-zero-scalar
+https://stackoverflow.com/questions/61851700/scalar-multiplication-on-elliptic-curves
+https://math.stackexchange.com/questions/3402254/adding-two-point-in-elliptic-with-same-x-coordinate
+https://stackoverflow.com/questions/31074172/elliptic-curve-point-addition-over-a-finite-field-in-python
