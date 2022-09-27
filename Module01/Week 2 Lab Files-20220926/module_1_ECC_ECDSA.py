@@ -151,14 +151,12 @@ class Point(object):
         elif isinstance(other, Point):
             if self.is_equal(other):
                 return self.double()
-            elif self.negate().is_equal(other):     # P + -P = O
-                return PointInf(self.curve)
-            elif self.x == other.x and self.y != other.y:       # I think this case is already covered by above (-P = Q)
+            elif self.negate().is_equal(other) or (self.x == other.x and self.y != other.y):     # P + -P = O
                 return PointInf(self.curve)
             else:
                 lam = ((self.y - other.y) * mod_inv((self.x - other.x), self.p)) % self.p   # = (y1 - y2) / (x1 - x2) mod p
-                new_x = (lam**2 - self.x - other.x) % self.p
-                new_y = (-(self.y + lam * (new_x - self.x))) % self.p
+                new_x = (lam**2 - self.x - other.x) % self.p                                # = (lambda^2 - x1 - x2) mod p
+                new_y = (-(self.y + lam * (new_x - self.x))) % self.p                       # = (lambda(x1 - x2) - y1) mod p
                 return Point(self.curve, new_x, new_y)
 
 
@@ -167,6 +165,26 @@ class Point(object):
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
         if not isinstance(scalar, int):
+            raise ArgumentError("Point.scalar_multiply expects integer scalar argument")
+
+        if scalar == 0:
+            return PointInf(self.curve)
+
+        if scalar < 0:
+            scalar = scalar % self.curve.q
+
+        bits = int_to_bits2(scalar)
+        res = Point(self.curve, self.x, self.y)
+
+        for bit in bits[1:]:
+            res = res.double()
+            if bit == '1':
+                res = res.add(self)
+
+        return res
+
+        # TODO: remove
+        """if not isinstance(scalar, int):
             raise ArgumentError("Point.scalar_multiply expects integer scalar argument")
         
         if scalar < 0:
@@ -179,23 +197,6 @@ class Point(object):
             if bit == 1:
                 res = res.add(tmp)
             tmp = tmp.double()
-
-        return res
-
-        """if not isinstance(scalar, int):
-            raise ArgumentError("Point.scalar_multiply expects integer scalar argument")
-        
-        if scalar < 0:
-            scalar = scalar % self.curve.q
-
-        bits = int_to_bits2(scalar)
-        res = PointInf(self.curve)
-
-        # Is this really correct???? Should it not start from 2nd bit, i.e., bit in bits[1:] (??)
-        for bit in bits:
-            res = res.double()
-            if bit == '1':
-                res = res.add(self)
 
         return res"""
 
@@ -228,8 +229,7 @@ def KeyGen(params: ECDSA_Params):
 def Sign_FixedNonce(params: ECDSA_Params, k, x, msg):
     # Write a function that takes as input an ECDSA_Params object, a fixed nonce k, a signing key x, and a message msg, and outputs a signature (r, s)
     h = bits_to_int(hash_message_to_bits(msg), params.q)
-    new_P = params.P.scalar_multiply(k)
-    r = new_P.x % params.q
+    r = params.P.scalar_multiply(k).x % params.q
     s = (mod_inv(k, params.q) * (h + x * r)) % params.q
     return (r, s)
 
@@ -241,11 +241,9 @@ def Sign(params: ECDSA_Params, x, msg):
     h = bits_to_int(hash_message_to_bits(msg), params.q)
     r, s = 0, 0
 
-    # maybe just use the Sign_FixedNonce function (but then that function must indicate if r or s == 0, e.g. with exception)
     while (r == 0 or s == 0):
         k = random.randint(1, params.q - 1)
-        new_P = params.P.scalar_multiply(k)
-        r = new_P.x % params.q
+        r = params.P.scalar_multiply(k).x % params.q
         s = (mod_inv(k, params.q) * (h + x * r)) % params.q
 
     return (r, s)

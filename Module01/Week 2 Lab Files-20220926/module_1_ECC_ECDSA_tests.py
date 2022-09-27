@@ -142,8 +142,6 @@ def run_tests(ECDSA_Params, Point, KeyGen, Sign, Sign_FixedNonce, Verify):
     global _Verify
     global nistp256_params
 
-    filecmp.clear_cache()
-
     _KeyGen = KeyGen
     _Sign = Sign
     _Verify = Verify
