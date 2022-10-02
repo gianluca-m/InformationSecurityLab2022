@@ -94,9 +94,7 @@ def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q, givenbits="msbs", algo
     # In the case of EC-Schnorr, r may be set to h
     if algorithm == "ecschnorr":
         r = h
-
-    # TODO: is the rest really the same, independent of algorithm???? I don't think so...
-    #       -> later part of the lab
+    # TODO: correctly adapt for different givenbits and algorithm
 
     t = (r * mod_inv(s, q)) % q
     z = (h * mod_inv(s, q)) % q
@@ -132,7 +130,7 @@ def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
     n = num_Samples
     # TODO: correct scaling??? scale with (2**(L+1)) (?) so last value is 1 ???
     scale_factor = 2**(L + 1)
-    
+
     B_cvp = [[0 for _ in range(n + 1)] for _ in range(n + 1)]
     for i in range(n):
         B_cvp[i][i] = int(q * scale_factor)
@@ -178,9 +176,8 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     # NOTE: The basis matrix B should be processed appropriately before being passes to the fpylll CVP-solver. See lab sheet for more details
     # https://github.com/fplll/fpylll/blob/master/src/fpylll/fplll/svpcvp.pyx
     # https://github.com/fplll/fpylll/blob/master/src/fpylll/fplll/integer_matrix.pyx
-    rows, cols = len(cvp_basis_B), len(cvp_basis_B[0])
-    B = IntegerMatrix(rows, cols)
-    B.set_matrix(cvp_basis_B)
+    B = IntegerMatrix.from_matrix(cvp_basis_B)
+    
     B = LLL.reduction(B)
     v = CVP.closest_vector(B, cvp_list_u)
     return list(v)
@@ -193,11 +190,8 @@ def solve_svp(svp_basis_B):
     # NOTE: Recall from the lecture and also from the exercise session that for ECDSA cryptanalysis based on partial nonces, you might want
     #       your function to include in the list of candidate vectors the *second* shortest vector (or even a later one). 
     # If required, figure out how to get the in-built SVP-solver functions from the fpylll library to return the second (or later) shortest vector
-    rows, cols = len(svp_basis_B), len(svp_basis_B[0])
-    B = IntegerMatrix(rows, cols)
-    B.set_matrix(svp_basis_B)
+    B = IntegerMatrix.from_matrix(svp_basis_B)
 
-    # TODO: this might be wrong
     SVP.shortest_vector(B)
     return list(B)
 
@@ -205,7 +199,7 @@ def solve_svp(svp_basis_B):
 def recover_x_partial_nonce_CVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits="msbs", algorithm="ecdsa"):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA and EC-Schnorr using the in-built CVP-solver functions from the fpylll library
     # The function is partially implemented for you. Note that it invokes some of the functions that you have already implemented
-    list_t, list_u = setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q)
+    list_t, list_u = setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits, algorithm)
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     v_List = solve_cvp(cvp_basis_B, cvp_list_u)
     # The function should recover the secret signing key x from the output of the CVP solver and return it
@@ -222,7 +216,7 @@ def recover_x_partial_nonce_CVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
 def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits="msbs", algorithm="ecdsa"):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA and EC-Schnorr using the in-built CVP-solver functions from the fpylll library
     # The function is partially implemented for you. Note that it invokes some of the functions that you have already implemented
-    list_t, list_u = setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q)
+    list_t, list_u = setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits, algorithm)
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     svp_basis_B = cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u)
     list_of_f_List = solve_svp(svp_basis_B)
@@ -230,7 +224,8 @@ def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     f = list_of_f_List[1]   # use second shortest
 
     # TODO: HOW TO GET x?????
-    x = (cvp_list_u[-2] - f[-2]) % q
+    index = len(f) - 2
+    x = (cvp_list_u[index ]- f[index]) % q
 
     # TODO: remove/comment before submit
     #if not check_x(x, Q):
