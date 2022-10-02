@@ -53,15 +53,14 @@ def recover_x_known_nonce(k, h, r, s, q):
     # Implement the "known nonce" cryptanalytic attack on ECDSA
     # The function is given the nonce k, (h, r, s) and the base point order q
     # The function should compute and return the secret signing key x
-    return mod_inv(r, q) * (k * s - h) % q  # TODO: maybe multiplicaiton is wrong (?)
+    return (mod_inv(r, q) * (k * s - h)) % q
 
 
 def recover_x_repeated_nonce(h_1, r_1, s_1, h_2, r_2, s_2, q):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA
     # The function is given the (hashed-message, signature) pairs (h_1, r_1, s_1) and (h_2, r_2, s_2) generated using the same nonce
     # The function should compute and return the secret signing key x
-    tmp = (h_1 * s_2 - h_2 * s_1) * (r_2 * s_1 - r_1 * s_2)
-    return mod_inv(tmp, q) % q
+    return ((h_1 * s_2 - h_2 * s_1) * mod_inv(r_2 * s_1 - r_1 * s_2, q)) % q
 
 
 def bit_list_to_int(bit_list):
@@ -93,12 +92,14 @@ def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q, givenbits="msbs", algo
     # The function is given a list of the L most significant bts of the N-bit nonce k, along with (h, r, s) and the base point order q
     # The function should return (t, u) computed as described in the lectures
     # In the case of EC-Schnorr, r may be set to h
-    #raise NotImplementedError()
     if algorithm == "ecschnorr":
         r = h
 
-    t = (r * mod_inv(s)) % q
-    z = (h * mod_inv(s)) % q
+    # TODO: is the rest really the same, independent of algorithm???? I don't think so...
+    #       -> later part of the lab
+
+    t = (r * mod_inv(s, q)) % q
+    z = (h * mod_inv(s, q)) % q
     u = MSB_to_Padded_Int(N, L, list_k_MSB) - z
     return (t, u)
 
@@ -128,7 +129,20 @@ def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
     # The function is given as input a list of t values, a list of u values and the base point order q
     # The function should return the CVP basis matrix B (to be implemented as a nested list) and the CVP target vector u (to be implemented as a list)
     # NOTE: The basis matrix B and the CVP target vector u should be scaled appropriately. Refer lecture slides and lab sheet for more details 
-    raise NotImplementedError()
+    n = num_Samples
+    # TODO: correct scaling??? scale with (2**(L+1)) (?) so last value is 1 ???
+    scale_factor = 2**(L + 1)
+    
+    B_cvp = [[0 for _ in range(n + 1)] for _ in range(n + 1)]
+    for i in range(n):
+        B_cvp[i][i] = int(q * scale_factor)
+        B_cvp[n][i] = int(list_t[i] * scale_factor)
+
+    B_cvp[n][n] = 1     # int((1 / 2)**(L + 1) * scale_factor)
+
+    u_cvp = [int(u * scale_factor) for u in list_u] + [0]
+        
+    return B_cvp, u_cvp
     
 
 def cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u):
@@ -137,7 +151,24 @@ def cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     # The function is given as input a CVP basis matrix B and the CVP target vector u
     # The function should use the Kannan embedding technique to output the corresponding SVP basis matrix B' of apropriate dimensions.
     # The SVP basis matrix B' should again be implemented as a nested list
-    raise NotImplementedError()
+    
+    # Note: type(cvp_basis_B) = nested list
+    # Note: type(cvp_list_u) = list
+
+    size_B_cvp = len(cvp_basis_B)
+    B_svp = [[0 for _ in range(size_B_cvp + 1)] for _ in range(size_B_cvp + 1)]
+    for i in range(size_B_cvp):
+        for j in range(size_B_cvp):
+            B_svp[i][j] = cvp_basis_B[i][j]
+
+        B_svp[-1][i] = cvp_list_u[i]
+
+    # TODO: what is correct value of M?????? -> probably explained in exercise
+    M = 1
+
+    B_svp[-1][-1] = M
+
+    return B_svp
 
 
 def solve_cvp(cvp_basis_B, cvp_list_u):
@@ -145,7 +176,15 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     # The function is given as input a CVP basis matrix B and the CVP target vector u
     # The function should output the solution vector v (to be implemented as a list)
     # NOTE: The basis matrix B should be processed appropriately before being passes to the fpylll CVP-solver. See lab sheet for more details
-    raise NotImplementedError()
+    # https://github.com/fplll/fpylll/blob/master/src/fpylll/fplll/svpcvp.pyx
+    # https://github.com/fplll/fpylll/blob/master/src/fpylll/fplll/integer_matrix.pyx
+    rows, cols = len(cvp_basis_B), len(cvp_basis_B[0])
+    B = IntegerMatrix(rows, cols)
+    B.set_matrix(cvp_basis_B)
+    B = LLL.reduction(B)
+    v = CVP.closest_vector(B, cvp_list_u)
+    return list(v)
+
 
 def solve_svp(svp_basis_B):
     # Implement a function that takes as input an instance of SVP and solves it using in-built SVP-solver functions from the fpylll library
@@ -154,7 +193,13 @@ def solve_svp(svp_basis_B):
     # NOTE: Recall from the lecture and also from the exercise session that for ECDSA cryptanalysis based on partial nonces, you might want
     #       your function to include in the list of candidate vectors the *second* shortest vector (or even a later one). 
     # If required, figure out how to get the in-built SVP-solver functions from the fpylll library to return the second (or later) shortest vector
-    raise NotImplementedError()
+    rows, cols = len(svp_basis_B), len(svp_basis_B[0])
+    B = IntegerMatrix(rows, cols)
+    B.set_matrix(svp_basis_B)
+
+    # TODO: this might be wrong
+    SVP.shortest_vector(B)
+    return list(B)
 
 
 def recover_x_partial_nonce_CVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits="msbs", algorithm="ecdsa"):
@@ -164,7 +209,15 @@ def recover_x_partial_nonce_CVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     v_List = solve_cvp(cvp_basis_B, cvp_list_u)
     # The function should recover the secret signing key x from the output of the CVP solver and return it
-    raise NotImplementedError()
+
+    x = v_List[-1] % q
+    
+    # TODO: remove/comment before submit
+    #if not check_x(x, Q):
+    #    print("CVP: Not correct")
+
+    return x
+
 
 def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q, givenbits="msbs", algorithm="ecdsa"):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA and EC-Schnorr using the in-built CVP-solver functions from the fpylll library
@@ -174,7 +227,15 @@ def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     svp_basis_B = cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u)
     list_of_f_List = solve_svp(svp_basis_B)
     # The function should recover the secret signing key x from the output of the SVP solver and return it
-    raise NotImplementedError()
+    f = list_of_f_List[1]   # use second shortest
+
+    # TODO: HOW TO GET x?????
+    x = (cvp_list_u[-2] - f[-2]) % q
+
+    # TODO: remove/comment before submit
+    #if not check_x(x, Q):
+    #    print("SVP: Not correct")
+    return x
 
 
 
