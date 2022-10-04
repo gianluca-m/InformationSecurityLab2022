@@ -64,10 +64,10 @@ def recover_x_repeated_nonce(h_1, r_1, s_1, h_2, r_2, s_2, q):
 
 
 def bit_list_to_int(bit_list):
-    out = 0
+    result = 0
     for bit in bit_list:
-        out = (out << 1) | bit
-    return out
+        result = (result << 1) | bit
+    return result
 
 
 def MSB_to_Padded_Int(N, L, list_k_MSB):
@@ -92,13 +92,34 @@ def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q, givenbits="msbs", algo
     # The function is given a list of the L most significant bts of the N-bit nonce k, along with (h, r, s) and the base point order q
     # The function should return (t, u) computed as described in the lectures
     # In the case of EC-Schnorr, r may be set to h
-    if algorithm == "ecschnorr":
-        r = h
-    # TODO: correctly adapt for different givenbits and algorithm
+    if algorithm == "ecdsa":
+        t = (r * mod_inv(s, q)) % q
+        z = (h * mod_inv(s, q)) % q
 
-    t = (r * mod_inv(s, q)) % q
-    z = (h * mod_inv(s, q)) % q
-    u = MSB_to_Padded_Int(N, L, list_k_MSB) - z
+        if givenbits == "msbs":
+            u = (MSB_to_Padded_Int(N, L, list_k_MSB) - z) % q
+        
+        elif givenbits == "lsbs":
+            u = (LSB_to_Int(list_k_MSB) -  z) % q
+            # TODO: something is still wrong
+
+    elif algorithm == "ecschnorr":
+        """
+        EC-Schnorr: 
+            s = k - hx mod q
+            --> hx = k - s mod q
+            --> t = h mod q
+            --> tx = k - s mod q = u + e mod q
+        """
+        r = h
+        t = h
+        if givenbits == "msbs":
+            u = (MSB_to_Padded_Int(N, L, list_k_MSB) - s) % q
+        
+        elif givenbits == "lsbs":
+            u = (LSB_to_Int(list_k_MSB) - s) % q
+            # TODO: something is still wrong
+
     return (t, u)
 
 
@@ -221,11 +242,14 @@ def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     svp_basis_B = cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u)
     list_of_f_List = solve_svp(svp_basis_B)
     # The function should recover the secret signing key x from the output of the SVP solver and return it
-    f = list_of_f_List[1]   # use second shortest
+    f = list_of_f_List[1]   # use second shortest   # = f' = [f M]
 
     # TODO: HOW TO GET x?????
-    index = len(f) - 2
-    x = (cvp_list_u[index ]- f[index]) % q
+    x = f[-2] % q    
+    # f' = [f M], and f = u_cvp - v --> f'[-2] = f[-1] = -x (?)
+    # f' = [f M], and f = [-e1, -e2, ..., -en, -x/2^(L+1)]      (??)
+    # v = [v1, v2, ..., vn, x/2^(L+1)]
+    # u_cvp = [u1, u2, ..., un, 0]
 
     # TODO: remove/comment before submit
     #if not check_x(x, Q):
