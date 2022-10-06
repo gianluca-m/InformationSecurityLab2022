@@ -100,8 +100,14 @@ def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q, givenbits="msbs", algo
             u = (MSB_to_Padded_Int(N, L, list_k_MSB) - z) % q
         
         elif givenbits == "lsbs":
-            u = (LSB_to_Int(list_k_MSB) -  z) % q
-            # TODO: something is still wrong
+            # t = 2^(-L) * s^(-1) * r mod q
+            t = (mod_inv(2**L, q) * t) % q      
+
+            # u = 2^(-L) * (-s^(-1) * m + LSB) + 2^(log(k) - L) mod q    where m = h and where k = number of bits in q
+            #   but in our case, k = 8, thus 2^(log(k) - L) would always be 0, when casting to int, thus we ignore that term
+            u = (bit_list_to_int(list_k_MSB) - z) % q
+            u = (mod_inv(2**L, q) * u) % q
+            
 
     elif algorithm == "ecschnorr":
         """
@@ -117,8 +123,13 @@ def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q, givenbits="msbs", algo
             u = (MSB_to_Padded_Int(N, L, list_k_MSB) - s) % q
         
         elif givenbits == "lsbs":
-            u = (LSB_to_Int(list_k_MSB) - s) % q
-            # TODO: something is still wrong
+            # t = 2^(-L) * h mod q
+            t = (mod_inv(2**L, q) * t) % q      
+
+            # u = 2^(-L) * (-s^(-1) * m + LSB) + 2^(log(k) - L) mod q     where k = number of bits in q
+            #   but in our case, k = 8, thus 2^(log(k) - L) would always be 0, when casting to int, thus we ignore that term
+            u = (bit_list_to_int(list_k_MSB) - s) % q
+            u = (mod_inv(2**L, q) * u) % q
 
     return (t, u)
 
@@ -149,7 +160,9 @@ def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
     # The function should return the CVP basis matrix B (to be implemented as a nested list) and the CVP target vector u (to be implemented as a list)
     # NOTE: The basis matrix B and the CVP target vector u should be scaled appropriately. Refer lecture slides and lab sheet for more details 
     n = num_Samples
-    # TODO: correct scaling??? scale with (2**(L+1)) (?) so last value is 1 ???
+
+    # we need to scale so that all values are integers
+    #  -> since only bottom right value is non-integer, we scale by 2^(L+1)
     scale_factor = 2**(L + 1)
 
     B_cvp = [[0 for _ in range(n + 1)] for _ in range(n + 1)]
@@ -182,10 +195,22 @@ def cvp_to_svp(N, L, num_Samples, cvp_basis_B, cvp_list_u):
 
         B_svp[-1][i] = cvp_list_u[i]
 
-    # TODO: what is correct value of M?????? -> probably explained in exercise
-    M = 1
 
-    B_svp[-1][-1] = M
+    # for lattice L(B), we have det(L) = ||b1|| * ... * ||bn||      (where bi are columns of L(B) (?))
+    #   -> in our case: det(L) <= q^n
+    #n = num_Samples + 1
+    #q = int(cvp_basis_B[0][0] / 2**(L+1))       # / 2^(L+1) because for B_cvp, we scaled q by 2^(L+1)
+    #lambda1 = math.sqrt(n / (2.0 * math.pi * math.e)) * q       # note: det = q^n^(1/n)= q^1 = q
+    #M = int(lambda1 / 2)
+    # -> this fails for L = 128
+
+    # M = ||f|| = ||u - w|| < (n + 1)^(1/2) * 2^(N - L - 1) 
+    # since we scaled B_cvp by 2^(L + 1), we use M = (n + 1)^(1/2) * 2^N
+    # M = int(math.sqrt(n + 1) * 2**N) -> fails for L = 8
+    # M = int(math.sqrt(n) * 2**N) -> fails for L = 8
+    # M = int(math.sqrt(n-1) * 2**N) -> fails for L = 8
+
+    B_svp[-1][-1] = 2**N
 
     return B_svp
 
@@ -244,12 +269,11 @@ def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     # The function should recover the secret signing key x from the output of the SVP solver and return it
     f = list_of_f_List[1]   # use second shortest   # = f' = [f M]
 
-    # TODO: HOW TO GET x?????
-    x = f[-2] % q    
     # f' = [f M], and f = u_cvp - v --> f'[-2] = f[-1] = -x (?)
     # f' = [f M], and f = [-e1, -e2, ..., -en, -x/2^(L+1)]      (??)
     # v = [v1, v2, ..., vn, x/2^(L+1)]
     # u_cvp = [u1, u2, ..., un, 0]
+    x = -f[-2] % q
 
     # TODO: remove/comment before submit
     #if not check_x(x, Q):
