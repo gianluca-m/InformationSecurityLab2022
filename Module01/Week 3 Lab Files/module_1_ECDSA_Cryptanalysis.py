@@ -275,6 +275,13 @@ def recover_x_partial_nonce_SVP(Q, N, L, num_Samples, listoflists_k_MSB, list_h,
     # u_cvp = [u1, u2, ..., un, 0]
     x = -f[-2] % q
 
+    index = 0
+    num_fs = len(list_of_f_List)
+    while ((not check_x(x, Q)) and index < num_fs):     # if 2nd shortest vector was not correct, try all f' vectors
+        f = list_of_f_List[index]
+        x = -f[-2] % q
+        index += 1
+
     # TODO: remove/comment before submit
     #if not check_x(x, Q):
     #    print("SVP: Not correct")

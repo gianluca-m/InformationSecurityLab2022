@@ -1,4 +1,3 @@
-from argparse import ArgumentError
 import math
 import random
 import warnings
@@ -41,7 +40,7 @@ def bits_to_int(h_as_bits, q):
 
 def int_to_bits2(i):
     ''' Returns the binary representation of integer i '''
-    return format(i, 'b') #'{0:08b}'.format(i)
+    return format(i, 'b')
 
 def int_to_bits(n):
     while n:
@@ -165,7 +164,7 @@ class Point(object):
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
         if not isinstance(scalar, int):
-            raise ArgumentError("Point.scalar_multiply expects integer scalar argument")
+            raise NotImplementedError("Point.scalar_multiply expects integer scalar argument")
 
         if scalar == 0:
             return PointInf(self.curve)
@@ -182,23 +181,6 @@ class Point(object):
                 res = res.add(self)
 
         return res
-
-        # TODO: remove
-        """if not isinstance(scalar, int):
-            raise ArgumentError("Point.scalar_multiply expects integer scalar argument")
-        
-        if scalar < 0:
-            scalar = scalar % self.curve.q
-
-        res = PointInf(self.curve)
-        tmp = Point(self.curve, self.x, self.y)
-
-        for bit in int_to_bits(scalar):
-            if bit == 1:
-                res = res.add(tmp)
-            tmp = tmp.double()
-
-        return res"""
 
 
     def scalar_multiply_Montgomery_Ladder(self, scalar):
