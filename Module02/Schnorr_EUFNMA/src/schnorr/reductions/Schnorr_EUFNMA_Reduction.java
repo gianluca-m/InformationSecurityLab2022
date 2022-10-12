@@ -68,10 +68,6 @@ public class Schnorr_EUFNMA_Reduction extends A_Schnorr_EUFNMA_Reduction{
         this.x = challenge.x;       // = g^y    --> goal: find y
         this.p = challenge.generator.getGroupOrder();
 
-        if (!this.x.getGroupOrder().equals(this.p)) {
-            System.out.println("SOMETHING IS WRONG");
-        }
-
         adversary.reset(seed);
         var result1 = adversary.run(this);
         
