@@ -19,7 +19,21 @@ import utils.Pair;
 import utils.StringUtils;
 import utils.Triple;
 
+// Own imports
+import java.util.Map;
+import java.security.SecureRandom;
+
 public class KatzWang_EUFCMA_Reduction extends A_KatzWang_EUFCMA_Reduction {
+
+    private IGroupElement x;
+    private IGroupElement y;
+    private IGroupElement z;
+    private IGroupElement g;
+    private BigInteger p;
+
+    private SecureRandom random = new SecureRandom();
+    private Map<Triple<IGroupElement, IGroupElement, String>, BigInteger> hashes 
+        = new HashMap<Triple<IGroupElement, IGroupElement, String>, BigInteger>();
 
     public KatzWang_EUFCMA_Reduction(A_KatzWang_EUFCMA_Adversary adversary) {
         super(adversary);
@@ -29,31 +43,66 @@ public class KatzWang_EUFCMA_Reduction extends A_KatzWang_EUFCMA_Reduction {
     @Override
     public Boolean run(I_DDH_Challenger<IGroupElement, BigInteger> challenger) {
         // Implement your code here!
+        var challenge = challenger.getChallenge();
+        this.x = challenge.x;
+        this.y = challenge.y;
+        this.z = challenge.z;
+        this.g = challenge.generator;
+        this.p = challenge.generator.getGroupOrder();
 
-        // You can use all classes and methods from the util package:
-        var randomNumber = NumberUtils.getRandomBigInteger(new Random(), challenger.getChallenge().generator.getGroupOrder());
-        var randomString = StringUtils.generateRandomString(new Random(), 10);
-        var pair = new Pair<Integer, Integer>(5, 8);
-        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
+        var result = adversary.run(this);
 
-        return false;
+        if (result == null) {
+            //System.out.println("Result is null");
+            return false;
+        }
+
+        var c = result.signature.c;
+        var s = result.signature.s;
+
+        // g^s * y1^(-c)    --> in our case with y1 = g^x, this is = g^s * g^-cx = g^r
+        var gr = this.g.power(s).multiply(this.x.power(c.negate()));
+
+        // h^s * y2^(-c)   --> in our case with h = g^y and y2 = g^xy, this is = g^ys * g^-cxy = g^yr = h^r
+        var hr = this.y.power(s).multiply(this.z.power(c.negate()));
+
+        return hash(gr, hr, result.message).equals(c);
     }
 
     @Override
     public KatzWangPK<IGroupElement> getChallenge() {
         // Implement your code here!
-        return null;
+        // PK = (g, h, y1=g^x, y2=h^x)  --> PK = (g, g^y, g^x, g^z=g^xy)
+        return new KatzWangPK<IGroupElement>(this.g, this.y, this.x, this.z);
     }
 
     @Override
     public BigInteger hash(IGroupElement comm1, IGroupElement comm2, String message) {
         // Implement your code here!
-        return BigInteger.ZERO;
+        var key = new Triple<IGroupElement, IGroupElement, String>(comm1, comm2, message);
+        if (hashes.containsKey(key)) {
+            return hashes.get(key);
+        } 
+        
+        var hash = utils.NumberUtils.getRandomBigInteger(this.random, this.p);
+
+        hashes.put(key, hash);
+        return hash;
     }
 
     @Override
     public KatzWangSignature<BigInteger> sign(String message) {
         // Implement your code here!
-        return null;
+        var e = NumberUtils.getRandomBigInteger(random, p);
+        var k = NumberUtils.getRandomBigInteger(random, p);
+        var gr = this.x.power(e.negate()).multiply(this.g.power(k));    // g^r = g^s * y1^-c = g^k * (g^x)^-e
+        var hr = this.z.power(e.negate()).multiply(this.y.power(k));            // h^r = h^s * y2^-c = (g^y)^k * (g^z)^-e
+
+        var key = new Triple<IGroupElement, IGroupElement, String>(gr, hr, message);
+        hashes.put(key, e);
+
+        var c = e;  // hash(gr, hr, message)
+        var s = k;
+        return new KatzWangSignature<BigInteger>(c, s);
     }
 }

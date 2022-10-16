@@ -23,7 +23,7 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
     private IGroupElement x;
     private IGroupElement y;
     private IGroupElement z;
-    private IGroupElement generator;
+    private IGroupElement g;
     private BigInteger p;
 
     private SecureRandom random = new SecureRandom();
@@ -42,7 +42,7 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
         this.x = challenge.x;
         this.y = challenge.y;
         this.z = challenge.z;
-        this.generator = challenge.generator;
+        this.g = challenge.generator;
         this.p = challenge.generator.getGroupOrder();
 
         var result = adversary.run(this);
@@ -56,7 +56,7 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
         var s = result.signature.s;
 
         // g^s * y1^(-c)    --> in our case with y1 = g^x, this is = g^s * g^-cx = g^r
-        var gr = this.generator.power(s).multiply(this.x.power(c.negate()));
+        var gr = this.g.power(s).multiply(this.x.power(c.negate()));
 
         // h^s * y2^(-c)   --> in our case with h = g^y and y2 = g^xy, this is = g^ys * g^-cxy = g^yr = h^r
         var hr = this.y.power(s).multiply(this.z.power(c.negate()));
@@ -68,7 +68,7 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
     public KatzWangPK<IGroupElement> getChallenge() {
         // Write your Code here!
         // PK = (g, h, y1=g^x, y2=h^x)  --> PK = (g, g^y, g^x, g^z=g^xy)
-        return new KatzWangPK<IGroupElement>(this.generator, this.y, this.x, this.z);
+        return new KatzWangPK<IGroupElement>(this.g, this.y, this.x, this.z);
     }
 
     @Override
