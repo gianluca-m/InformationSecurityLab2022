@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.Random;
 
 import ddh.I_DDH_Challenger;
+import genericGroups.GroupElement;
 import genericGroups.IGroupElement;
 import katzwang.A_KatzWang_EUFNMA_Adversary;
 import katzwang.KatzWangPK;
@@ -26,7 +27,8 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
     private BigInteger p;
 
     private SecureRandom random = new SecureRandom();
-    private Map<String, BigInteger> hashes = new HashMap<String, BigInteger>();
+    private Map<Triple<IGroupElement, IGroupElement, String>, BigInteger> hashes 
+        = new HashMap<Triple<IGroupElement, IGroupElement, String>, BigInteger>();
 
     public KatzWang_EUFNMA_Reduction(A_KatzWang_EUFNMA_Adversary adversary) {
         super(adversary);
@@ -45,28 +47,21 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
 
         var result = adversary.run(this);
 
-        // TODO: is this considered "Tricking the Program"???
         if (result == null) {
             //System.out.println("Result is null");
             return false;
         }
-        else {
-            //System.out.println("NON-NULL");
-            return true;
-        }
 
-        /*var c = result.signature.c;
+        var c = result.signature.c;
         var s = result.signature.s;
-
-        // h^s * y2^(-c)   --> in our case with h = g^y and y2 = g^xy, this is = g^ys * g^-cxy = g^yr
-        var gyr = this.y.power(s).multiply(this.z.power(c.negate()));
 
         // g^s * y1^(-c)    --> in our case with y1 = g^x, this is = g^s * g^-cx = g^r
         var gr = this.generator.power(s).multiply(this.x.power(c.negate()));
 
-        var checkY = gyr.multiply(gr.invert());
+        // h^s * y2^(-c)   --> in our case with h = g^y and y2 = g^xy, this is = g^ys * g^-cxy = g^yr = h^r
+        var hr = this.y.power(s).multiply(this.z.power(c.negate()));
 
-        return checkY.equals(this.y);*/
+        return hash(gr, hr, result.message).equals(c);
     }
 
     @Override
@@ -79,7 +74,7 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
     @Override
     public BigInteger hash(IGroupElement comm1, IGroupElement comm2, String message) {
         // Write your Code here!
-        var key = message;
+        var key = new Triple<IGroupElement, IGroupElement, String>(comm1, comm2, message);
         if (hashes.containsKey(key)) {
             return hashes.get(key);
         } 
