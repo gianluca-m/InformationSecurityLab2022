@@ -140,6 +140,8 @@ public class KatzWang_EUFNMA_TestRunner extends StudentTestRunner {
         var x = dlog(group, challenge.x);
         var y = dlog(group, challenge.y);
         var z = dlog(group, challenge.z);
+        //System.out.println("p: " + p + "\tx: " + x + "\ty: " + y + "\tz: " + z);
+        //System.out.println("gcd(p, x): " + p.gcd(x) + "\tgcd(p, y): " + p.gcd(y) + "\tgcd(p, z): " + p.gcd(z));
         var xyMinusZ = x.multiply(y).subtract(one.multiply(z));
         var modP = xyMinusZ.mod(p);
         return modP.signum() == 0;
@@ -164,6 +166,7 @@ public class KatzWang_EUFNMA_TestRunner extends StudentTestRunner {
                     .newInstance(adversary);
             var solution = reduction.run(challenger);
             didWin = solution != null && solution == getSolution(group, challenger);
+            //System.out.println("real: " + getSolution(group, challenger) + "\tmine: " + solution + "\n--------");
             if (didWin)
                 wasTight = adversary.hasNotBeenResetted();
 

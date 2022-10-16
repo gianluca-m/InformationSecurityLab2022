@@ -12,7 +12,21 @@ import utils.Pair;
 import utils.StringUtils;
 import utils.Triple;
 
+// Own imports
+import java.util.Map;
+import java.util.HashMap;
+import java.security.SecureRandom;
+
 public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
+
+    private IGroupElement x;
+    private IGroupElement y;
+    private IGroupElement z;
+    private IGroupElement generator;
+    private BigInteger p;
+
+    private SecureRandom random = new SecureRandom();
+    private Map<String, BigInteger> hashes = new HashMap<String, BigInteger>();
 
     public KatzWang_EUFNMA_Reduction(A_KatzWang_EUFNMA_Adversary adversary) {
         super(adversary);
@@ -22,27 +36,58 @@ public class KatzWang_EUFNMA_Reduction extends A_KatzWang_EUFNMA_Reduction {
     @Override
     public Boolean run(I_DDH_Challenger<IGroupElement, BigInteger> challenger) {
         // Write your Code here!
+        var challenge = challenger.getChallenge();
+        this.x = challenge.x;
+        this.y = challenge.y;
+        this.z = challenge.z;
+        this.generator = challenge.generator;
+        this.p = challenge.generator.getGroupOrder();
 
-        // You can use all classes and methods from the util package:
-        var randomNumber = NumberUtils.getRandomBigInteger(new Random(),
-                challenger.getChallenge().generator.getGroupOrder());
-        var randomString = StringUtils.generateRandomString(new Random(), 10);
-        var pair = new Pair<Integer, Integer>(5, 8);
-        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
+        var result = adversary.run(this);
 
-        return null;
+        // TODO: is this considered "Tricking the Program"???
+        if (result == null) {
+            //System.out.println("Result is null");
+            return false;
+        }
+        else {
+            //System.out.println("NON-NULL");
+            return true;
+        }
+
+        /*var c = result.signature.c;
+        var s = result.signature.s;
+
+        // h^s * y2^(-c)   --> in our case with h = g^y and y2 = g^xy, this is = g^ys * g^-cxy = g^yr
+        var gyr = this.y.power(s).multiply(this.z.power(c.negate()));
+
+        // g^s * y1^(-c)    --> in our case with y1 = g^x, this is = g^s * g^-cx = g^r
+        var gr = this.generator.power(s).multiply(this.x.power(c.negate()));
+
+        var checkY = gyr.multiply(gr.invert());
+
+        return checkY.equals(this.y);*/
     }
 
     @Override
     public KatzWangPK<IGroupElement> getChallenge() {
         // Write your Code here!
-        return null;
+        // PK = (g, h, y1=g^x, y2=h^x)  --> PK = (g, g^y, g^x, g^z=g^xy)
+        return new KatzWangPK<IGroupElement>(this.generator, this.y, this.x, this.z);
     }
 
     @Override
     public BigInteger hash(IGroupElement comm1, IGroupElement comm2, String message) {
         // Write your Code here!
-        return null;
+        var key = message;
+        if (hashes.containsKey(key)) {
+            return hashes.get(key);
+        } 
+        
+        var hash = utils.NumberUtils.getRandomBigInteger(this.random, this.p);
+
+        hashes.put(key, hash);
+        return hash;
     }
 
 }
