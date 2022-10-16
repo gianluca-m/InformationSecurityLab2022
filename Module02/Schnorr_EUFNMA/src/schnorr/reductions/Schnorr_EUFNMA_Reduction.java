@@ -23,7 +23,7 @@ public class Schnorr_EUFNMA_Reduction extends A_Schnorr_EUFNMA_Reduction{
     private BigInteger p;
 
     private SecureRandom random = new SecureRandom();
-    private Map<String, BigInteger> hashes = new HashMap<String, BigInteger>();
+    private Map<Pair<String, IGroupElement>, BigInteger> hashes = new HashMap<Pair<String, IGroupElement>, BigInteger>();
     private Set<BigInteger> usedHashes = new HashSet<BigInteger>();
 
     public Schnorr_EUFNMA_Reduction(I_Schnorr_EUFNMA_Adversary<IGroupElement, BigInteger> adversary) {
@@ -40,7 +40,7 @@ public class Schnorr_EUFNMA_Reduction extends A_Schnorr_EUFNMA_Reduction{
     @Override
     public BigInteger hash(String message, IGroupElement r) {
         //Write your Code here!
-        var key = message;
+        var key = new Pair<String, IGroupElement>(message, r);
         if (hashes.containsKey(key)) {
             return hashes.get(key);
         } 

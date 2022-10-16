@@ -27,7 +27,7 @@ public class Schnorr_EUFCMA_Reduction extends A_Schnorr_EUFCMA_Reduction {
     private BigInteger p;
 
     private SecureRandom random = new SecureRandom();
-    private Map<String, BigInteger> hashes = new HashMap<String, BigInteger>();
+    private Map<Pair<String, IGroupElement>, BigInteger> hashes = new HashMap<Pair<String, IGroupElement>, BigInteger>();
     private Set<BigInteger> usedHashes = new HashSet<BigInteger>();
 
     public Schnorr_EUFCMA_Reduction(I_Schnorr_EUFCMA_Adversary<IGroupElement, BigInteger> adversary) {
@@ -46,8 +46,12 @@ public class Schnorr_EUFCMA_Reduction extends A_Schnorr_EUFCMA_Reduction {
         // Implement your code here!
         var e = NumberUtils.getRandomBigInteger(this.random, this.p);
         var k = NumberUtils.getRandomBigInteger(this.random, this.p);
-        var r = this.x.power(e).multiply(this.generator.power(k));
-        var c = hash(message, r);
+        var r = this.x.power(e.negate()).multiply(this.generator.power(k));
+
+        var key = new Pair<String, IGroupElement>(message, r);
+        hashes.put(key, e);
+
+        var c = e; // hash(message, r);
         var s = k;
         return new SchnorrSignature<BigInteger>(c, s);
     }
@@ -55,7 +59,7 @@ public class Schnorr_EUFCMA_Reduction extends A_Schnorr_EUFCMA_Reduction {
     @Override
     public BigInteger hash(String message, IGroupElement r) {
         // Implement your code here!
-        var key = message;
+        var key = new Pair<String, IGroupElement>(message, r);
         if (hashes.containsKey(key)) {
             return hashes.get(key);
         } 
