@@ -15,6 +15,8 @@ import katzwang.KatzWangPK;
 import katzwang.KatzWangSignature;
 import katzwang.KatzWangSolution;
 import utils.NumberUtils;
+import utils.Pair;
+import utils.StringUtils;
 import utils.Triple;
 
 public class KatzWang_EUFCMA_Reduction extends A_KatzWang_EUFCMA_Reduction {
@@ -27,6 +29,13 @@ public class KatzWang_EUFCMA_Reduction extends A_KatzWang_EUFCMA_Reduction {
     @Override
     public Boolean run(I_DDH_Challenger<IGroupElement, BigInteger> challenger) {
         // Implement your code here!
+
+        // You can use all classes and methods from the util package:
+        var randomNumber = NumberUtils.getRandomBigInteger(new Random(), challenger.getChallenge().generator.getGroupOrder());
+        var randomString = StringUtils.generateRandomString(new Random(), 10);
+        var pair = new Pair<Integer, Integer>(5, 8);
+        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
+
         return false;
     }
 

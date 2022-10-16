@@ -1,11 +1,16 @@
 package dlog_cdh;
 
 import java.math.BigInteger;
+import java.util.Random;
 
 import cdh.CDH_Challenge;
 import dlog.DLog_Challenge;
 import dlog.I_DLog_Challenger;
 import genericGroups.IGroupElement;
+import utils.NumberUtils;
+import utils.Pair;
+import utils.StringUtils;
+import utils.Triple;
 
 /**
  * This is the file you need to implement.
@@ -59,6 +64,12 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
         int[] values = new int[primes.length];
         BigInteger composed = CRTHelper.crtCompose(values, primes);
 
+        //You can use all classes and methods from the util package:
+        var randomNumber = NumberUtils.getRandomBigInteger(new Random(), groupOrder);
+        var randomString = StringUtils.generateRandomString(new Random(), 10);
+        var pair = new Pair<Integer, Integer>(5,8);
+        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
+        
         return BigInteger.ZERO;
     }
 

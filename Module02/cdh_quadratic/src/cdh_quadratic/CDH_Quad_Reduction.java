@@ -1,9 +1,15 @@
 package cdh_quadratic;
 
 import java.math.BigInteger;
+import java.util.Random;
+
 import cdh.CDH_Challenge;
 import cdh.I_CDH_Challenger;
 import genericGroups.IGroupElement;
+import utils.NumberUtils;
+import utils.Pair;
+import utils.StringUtils;
+import utils.Triple;
 
 /**
  * This is the file you need to implement.
@@ -34,6 +40,12 @@ public class CDH_Quad_Reduction extends A_CDH_Quad_Reduction<IGroupElement> {
 
         // Remember that this is a group of prime order p.
         // In particular, we have a^(p-1) = 1 mod p for each a != 0.
+
+        // You can use all classes and methods from the util package:
+        var randomNumber = NumberUtils.getRandomBigInteger(new Random(), challenge.generator.getGroupOrder());
+        var randomString = StringUtils.generateRandomString(new Random(), 10);
+        var pair = new Pair<Integer, Integer>(5, 8);
+        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
 
         return null;
     }
