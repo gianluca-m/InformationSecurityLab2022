@@ -3,6 +3,8 @@ package dlog_cdh;
 import java.math.BigInteger;
 import java.util.Random;
 
+import javax.security.auth.kerberos.KerberosCredMessage;
+
 import cdh.CDH_Challenge;
 import dlog.DLog_Challenge;
 import dlog.I_DLog_Challenger;
@@ -11,6 +13,9 @@ import utils.NumberUtils;
 import utils.Pair;
 import utils.StringUtils;
 import utils.Triple;
+
+// Own imports
+import java.util.ArrayList;
 
 /**
  * This is the file you need to implement.
@@ -27,7 +32,8 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
     /**
      * Save here the group generator of the DLog challenge given to you.
      */
-    private IGroupElement generator;
+    private IGroupElement g;
+    private IGroupElement gx;        // g^x
 
     /**
      * Do NOT change or remove this constructor. When your reduction can not provide
@@ -44,7 +50,20 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
 
         // By the following call you will receive a DLog challenge.
         DLog_Challenge<IGroupElement> challenge = challenger.getChallenge();
-        this.generator = challenge.generator;
+        this.g = challenge.generator;
+        this.gx = challenge.x;       // g^x
+        var p = challenge.generator.getGroupOrder();
+        var phi = p.subtract(BigInteger.ONE);      // phi(p) = p - 1
+
+
+        if (this.gx.equals(this.g.power(BigInteger.ZERO))) {
+            return BigInteger.ZERO;
+        }
+
+        if (this.gx.equals(this.g)) {
+            return BigInteger.ONE;
+        }
+
 
         // You may assume that adversary is a perfect adversary.
         // I.e., cdh_solution will always be of the form g^(x * y) when you give the
@@ -53,24 +72,50 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
         // your reduction does not need to be tight. I.e., you may call
         // adversary.run(this) multiple times.
 
-        BigInteger groupOrder = challenge.generator.getGroupOrder();
         // Make use of the fact that the group order is of the form 1 + p1 * ... * pn
         // for many small primes pi !!
-        int[] primes = PrimesHelper.getDecompositionOfPhi(groupOrder);
+        int[] primes = PrimesHelper.getDecompositionOfPhi(p);      // qs
+
         // Also, make use of a generator of the multiplicative group mod p.
-        BigInteger multiplicativeGenerator = PrimesHelper.getGenerator(groupOrder);
+        BigInteger z = PrimesHelper.getGenerator(p);     
 
         // You can also use the method of CRTHelper
-        int[] values = new int[primes.length];
-        BigInteger composed = CRTHelper.crtCompose(values, primes);
+        //int[] values = new int[primes.length];
+        //BigInteger composed = CRTHelper.crtCompose(values, primes);
 
-        //You can use all classes and methods from the util package:
-        var randomNumber = NumberUtils.getRandomBigInteger(new Random(), groupOrder);
-        var randomString = StringUtils.generateRandomString(new Random(), 10);
-        var pair = new Pair<Integer, Integer>(5,8);
-        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
-        
-        return BigInteger.ZERO;
+
+        // We know that x = z^k --> find k using Pohlig-Hellman algorithm
+        var crtValues = new ArrayList<Integer>();
+        var crtModuli = new ArrayList<Integer>();
+
+        for (int qi : primes) {
+            var phiDivQi = phi.divide(BigInteger.valueOf(qi));
+
+            var gxPhiDivQi = cdh_power(this.gx, phiDivQi);      // g^(x^(phi/qi))
+
+            var zPhiDivQi = z.modPow(phiDivQi, p);         // z^(phi/qi)
+
+            for (int r = 0; r < qi; r++) {
+                var zKPhiDivQi = zPhiDivQi.pow(r);              // z^(r * (phi/qi))
+                var gzKPhiDivQi = this.g.power(zKPhiDivQi);     // g^(z^(r * (phi/qi)))
+
+                if (gxPhiDivQi.equals(gzKPhiDivQi)) {
+                    crtValues.add(r);
+                    crtModuli.add(qi);
+                }
+            }
+        }
+
+        var values = new int[crtValues.size()];
+        var moduli = new int[crtModuli.size()];
+
+        for (int i = 0; i < crtValues.size(); i++) {
+            values[i] = crtValues.get(i);
+            moduli[i] = crtModuli.get(i);
+        }
+
+        var k = CRTHelper.crtCompose(values, moduli);
+        return z.modPow(k, p);
     }
 
     @Override
@@ -85,12 +130,14 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
      * (where g is the generator from the DLog challenge).
      */
     private IGroupElement cdh(IGroupElement x, IGroupElement y) {
+
+        cdh_challenge = new CDH_Challenge<IGroupElement>(this.g, x, y);
+
         // Use the run method of your CDH adversary to have it solve CDH-challenges:
-        IGroupElement cdh_solution = adversary.run(this);
         // You should specify the challenge in the cdh_challenge field of this class.
         // So, the above getChallenge method returns the correct cdh challenge to
         // adversary.
-        return null;
+        return adversary.run(this);
     }
 
     /**
@@ -103,6 +150,21 @@ public class DLog_CDH_Reduction extends A_DLog_CDH_Reduction<IGroupElement, BigI
         // For this method, use your cdh method and think of aritmetic algorithms for
         // fast exponentiation.
         // Use the methods exponent.bitLength() and exponent.testBit(n)!
-        return null;
+
+        // Square-and-Multiply
+
+        if (exponent.equals(BigInteger.ZERO)) {
+            return this.g;
+        }
+
+        if (!exponent.testBit(0)) {
+            // exponent is even
+            return cdh_power(cdh(x, x), exponent.divide(BigInteger.TWO));
+        }
+        else {
+            // exponent is odd
+            var tmp = cdh_power(cdh(x, x), (exponent.subtract(BigInteger.ONE)).divide(BigInteger.TWO));
+            return cdh(x, tmp);
+        }
     }
 }
