@@ -17,9 +17,26 @@ import utils.Pair;
 import utils.StringUtils;
 import utils.Triple;
 
+// Own imports
+import java.security.SecureRandom;
+
 public class DHI_DY05_Reduction implements I_DHI_DY05_Reduction {
     // Do not remove this field!
     private final I_Selective_DY05_Adversary adversary;
+
+    private IGroupElement g;
+    private BigInteger p;
+    private int q;
+
+    private IGroupElement ga;   // g^a
+
+    private SimplePolynomial f;
+    private BigInteger beta;
+
+    private int x0;
+
+
+    private SecureRandom random = new SecureRandom();
 
     public DHI_DY05_Reduction(I_Selective_DY05_Adversary adversary) {
         // Do not change this constructor!
@@ -31,36 +48,57 @@ public class DHI_DY05_Reduction implements I_DHI_DY05_Reduction {
         // Write Code here!
 
         var challenge = challenger.getChallenge();
-        var generator = challenge.get(0);
-        var order = generator.getGroupOrder();
+        this.g = challenge.get(0);
+        this.ga = challenge.get(1);
+        this.p = g.getGroupOrder();
+
+        this.q = challenge.size() - 1;      // message size (?)
 
         // You can use the SimplePolynomial class to solve this task
-        var f = new SimplePolynomial(order, 1, 1);
+        var coefficients = new BigInteger[this.q];         // c_j
+        for (int i = 0; i < coefficients.length; i++) {
+            coefficients[i] = NumberUtils.getRandomBigInteger(random, this.p.subtract(BigInteger.ONE)).add(BigInteger.ONE);
+        }
+        this.f = new SimplePolynomial(p, coefficients);
 
-        // You can use all classes and methods from the util package:
-        var randomNumber = NumberUtils.getRandomBigInteger(new Random(),
-                challenger.getChallenge().get(0).getGroupOrder());
-        var randomString = StringUtils.generateRandomString(new Random(), 10);
-        var pair = new Pair<Integer, Integer>(5, 8);
-        var triple = new Triple<Integer, Integer, Integer>(13, 21, 34);
 
-        return null;
+        var ga = challenge.get(1);       // g^(a^1)
+        if (ga.equals(g)) {                // g^(a^1) == g   ==> a = 1 ==> g^(1/a) = g^(1) = g
+            return g;       
+        }
+
+        var result = adversary.run(this);
+
+        while (this.x0 != 0) {
+            result = adversary.run(this);       // g^(1/(alpha + x0))
+        }
+        return result;
     }
 
     @Override
     public void receiveChallengePreimage(int _challenge_preimage) throws Exception {
         // Write Code here!
+        //System.out.println("receiveChallengePreimage: " + _challenge_preimage);
+        this.x0 = _challenge_preimage;
     }
 
     @Override
     public IGroupElement eval(int preimage) {
         // Write Code here!
-        return null;
+        System.out.println("eval");
+
+
+
+        // this is basically the sign function (??)
+        var zPlusXi = new SimplePolynomial(this.p, new int[] {preimage, 1});         // (z + xi)     and xi = preimage (?)
+        var fiz = this.f.div(zPlusXi);                       // fi(z) = f(z) / (z + xi)
+        var fibeta = this.g.power(fiz.eval(this.beta));     // g^(fi(beta)) = y = signature
+        return fibeta;
     }
 
     @Override
     public DY05_PK getPK() {
         // Write Code here!
-        return null;
+        return new DY05_PK(this.g, this.ga);
     }
 }
