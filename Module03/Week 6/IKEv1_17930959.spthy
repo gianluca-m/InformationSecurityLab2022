@@ -43,17 +43,73 @@ rule genkey:
 /*----------------*/
 /* Protocol rules */
 /*----------------*/
+rule Init_1:
+  let gx = 'g'^~x
+  in
+    [ !Key($A, ~skA),
+      !Pk(b, pkB), 
+      Fr(~x),
+      Fr(~Na) ]
+    -->
+    [ Out(<aenc($A, pkB), aenc(~Na, pkB), gx>),
+      Init_1($A, b, ~skA, pkB, ~x, gx, ~Na) ]
 
 
+rule Resp_1:
+  let gy = 'g'^~y
+      a = adec(m1, ~skB)
+      Na = adec(m2, ~skB)
+      skID = prf(<h(<Na, ~Nb>), a, $B>)
+      HashB = prf(<skID, gy, gx, $B, a>)
+      kAB = prf(<skID, gx^~y>)
+  in
+    [ !Key($B, ~skB),
+      !Pk(a, pkA),
+      Fr(~y),
+      Fr(~Nb),
+      In(<m1, m2, gx>) ]
+    --[ RunningR($B, a, kAB) ]->
+    [ Out(<aenc($B, pkA), aenc(~Nb, pkA), gy, HashB>),
+      Resp_1($B, a, ~skB, pkA, ~y, gy, gx, ~Nb, skID, HashB) ]
 
 
+rule Init_2:
+  let b = adec(m1, ~skA)
+      Nb = adec(m2, ~skA)
+      skID = prf(<h(<~Na, Nb>), $A, b>)
+      HashA = prf(<skID, gx, gy, $A, b>)
+      kAB = prf(<skID, gy^~x>)
+  in
+    [ Init_1($A, b, ~skA, pkB, ~x, gx, ~Na),
+      In(<m1, m2, gy, HashB>) ]
+    --[ Eq(HashB, prf(<skID, gy, gx, b, $A>)),
+        FinishedI($A),
+        SecretI($A, b, kAB),
+        RunningI($A, b, kAB),
+        CommitI($A, b, kAB) ]->
+    [ Out(HashA) ]
+
+
+rule Resp_2:
+  let kAB = prf(<skID, gx^~y>)
+  in
+    [ Resp_1($B, a, ~skB, pkA, ~y, gy, gx, ~Nb, skID, HashB),
+      In(HashA) ]
+    --[ Eq(HashA, prf(<skID, gx, gy, a, $B>)),
+        FinishedR($B),
+        SecretR(a, $B, kAB),
+        CommitR($B, a, kAB) ]->
+    []
 
 
 
 /* ---------- */
 /* Key Reveal */
 /* ---------- */
-
+rule Compromise_Agent:
+  [!Key(A, k)]
+  --[Compromised(A)]->
+  [Out(k)]
 
 
 
@@ -112,22 +168,17 @@ lemma agreementI:
 Please uncomment the following two lemmas for this question.
 */
 
-
-/*
 lemma secrecy_PFS_R:
  " All A B k #i. 
     SecretR(A, B, k) @i &
       not ((Ex #l. (Compromised(A) @ l & l<i )) | (Ex #m. (Compromised(B) @ m & m < i)) )  
     ==> not (Ex #j. K(k)@j )"
-*/
 
-/*
 lemma secrecy_PFS_I:
  " All A B k #i. 
     SecretI(A, B, k) @i &
       not ((Ex #l. (Compromised(A) @ l & l<i )) | (Ex #m. (Compromised(B) @ m & m < i)) )  
     ==> not (Ex #j. K(k)@j )"
-*/
 
 
 end
