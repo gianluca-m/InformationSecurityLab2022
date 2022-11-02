@@ -61,7 +61,9 @@ rule Init_2:
       In(<b, aenc(<gy, hgx>, pk(~skA))>) ]
     --[ Eq(h(gx), hgx),
         FinishedI($A),
-        SecretI($A, b, gy^~x) ]->
+        SecretI($A, b, gy^~x),
+        RunningI($A, b, gy^~x),
+        CommitI($A, b, gy^~x) ]->
     [ Out(<$A, aenc(h(gy), pkB)>) ]
 
 
@@ -70,7 +72,9 @@ rule Resp_2:
       In(<a, aenc(hgy, pk(~skB))>)]
     --[ Eq(h(gy), hgy),
         FinishedR($B),
-        SecretR(a, $B, gx^~y) ]->
+        SecretR(a, $B, gx^~y),
+        CommitR($B, a, gx^~y),
+        RunningR($B, a, gx^~y) ]->
     []
 
 
@@ -127,24 +131,16 @@ lemma key_secrecyR:
 Please uncomment the following two lemmas for this question.
 */
 
-
-/*
 lemma agreementR:
 "All #i A B k.
   (CommitR( B, A, k) @ i &
    not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
    ==> (Ex #j. RunningI(A, B, k) @ j & j < i)"
-*/
 
-/*
 lemma agreementI:
 "All #i A B k.
   (CommitI(A, B, k) @ i &
    not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
    ==> (Ex #j. RunningR(B, A, k) @ j & j < i)"
-*/
 
 end
-
-
-
