@@ -33,58 +33,45 @@ rule GenKey:  // generate long-term key pair, publish the public key
 /*----------------*/
 
 /* Question 1 here */
-
-
-
 rule Init_1:
-  let gxI = 'g'^~xI in            // g^x
-    [ Fr(~xI),
-      !Pk(b, pkB) ]
-    --[]->
-    [ Init_1($A, ~xI, gxI, pkB),
-      Out(<$A, aenc(gxI, pkB)>) ]
+  let gx = 'g'^~x
+  in 
+    [ !Key($A, ~skA),
+      !Pk(b, pkB),
+      Fr(~x) ]
+    -->
+    [ Out(<$A, aenc(gx, pkB)>),
+      Init_1($A, b, ~skA, pkB, ~x, gx) ]
 
 
 rule Resp_1:
-  let gyR = 'g'^~yR               // g^y
-      gxI = adec(enc_gx, skB)     // g^x
-      hgx = h(gxI)                // h(g^x)
+  let gy = 'g'^~y
   in
-    [ Fr(~yR),
-      In(<a, enc_gx>),
-      !Key($B, skB),
-      !Pk(a, pkA) ]
-    --[]->
-    [ Resp_1($B, ~yR, gyR, gxI, hgx, skB),
-      Out(<$B, aenc(<gyR, hgx>, pkA)>)]
+    [ !Key($B, ~skB),
+      !Pk(a, pkA),
+      Fr(~y),
+      In(<a, aenc(gx, pk(~skB))>) ]
+    -->
+    [ Out(<$B, aenc(<gy, h(gx)>, pkA)>),
+      Resp_1($B, a, ~skB, pkA, ~y, gy, gx) ]
 
 
 rule Init_2:
-  let m = adec(enc_hgy, skA)      // adec(aenc(g^y, h(g^x))) = (g^y, h^(g^x))
-      gy = fst(m)                 // g^y
-      hgx = snd(m)                // h(g^x)
-      gxy = gy^~xI                // (g^y)^x = g^xy
-  in 
-    [ Init_1($A, ~xI, gxI, pkB),
-      !Key($A, skA),
-      In(<b, enc_hgx>) ]
-    --[ Eq(hgx, h(gxI)),
+    [ Init_1($A, b, ~skA, pkB, ~x, gx),
+      In(<b, aenc(<gy, hgx>, pk(~skA))>) ]
+    --[ Eq(h(gx), hgx),
         FinishedI($A),
-        SecretI($A, b, gxy) ]->
-    [ Init_2($A, ~xI, gxI, pkB, hgx),
-      Out(<$A, aenc(h(gy), pkB)>)]
+        SecretI($A, b, gy^~x) ]->
+    [ Out(<$A, aenc(h(gy), pkB)>) ]
 
 
 rule Resp_2:
-  let hgy = adec(enc_hgy, skB)      // adec(aenc(h(g^y))) = h(g^y)
-      gxy = gxI^~yR                 // (g^x)^y = g^xy
-  in 
-    [ Resp_1($B, ~yR, gyR, gxI, hgx, skB),
-      In(<a, enc_hgy>)]
-    --[ Eq(hgy, h(gyR)),
+    [ Resp_1($B, a, ~skB, pkA, ~y, gy, gx), 
+      In(<a, aenc(hgy, pk(~skB))>)]
+    --[ Eq(h(gy), hgy),
         FinishedR($B),
-        SecretR(a, $B, gxy) ]->
-    [ Resp_2($B, ~yR, gyR, gxI, hgx, skB, hgy, gxy) ]
+        SecretR(a, $B, gx^~y) ]->
+    []
 
 
 /* ---------- */
@@ -92,7 +79,10 @@ rule Resp_2:
 /* ---------- */
 
 /* Question 2 here */
-
+rule Compromise_Agent:
+  [!Key(A, k)]
+  --[Compromised(A)]->
+  [Out(k)]
 
 
 /* ---------- */
