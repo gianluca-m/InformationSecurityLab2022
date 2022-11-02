@@ -1,10 +1,10 @@
-theory EncryptedDH
+theory EncryptedDH2
 begin
 
-/* Signed Diffie-Hellman protocol, first attempt:
-   A -> B : A, aenc_B{g^x}  (x fresh)
-   B -> A : B, aenc_A{g^y, h(g^x)}  (y fresh)
-   A -> B : A, aenc_B{h(g^y)}  */
+/* Signed Diffie-Hellman protocol, second attempt:
+   A -> B : aenc_B{A, g^x}  (x fresh)
+   B -> A : aenc_A{B, g^y, h(g^x)}  (y fresh)
+   A -> B : aenc_B{A, h(g^y)}  */
 
 
 /* ----------------- */
@@ -20,19 +20,19 @@ builtins: diffie-hellman, asymmetric-encryption, hashing
 /* Key infrastructure */
 /* ------------------ */
 
-rule GenKey:  // generate long-term key pair, publish the public key
+rule genkey: 
    [ Fr(~kA) ] 
    -->
-   [ !Key($A, ~kA),  // notation: !Fact = persistent fact, not consumed by rules
+   [ !Key($A, ~kA),  
      !Pk($A, pk(~kA)),
      Out(pk(~kA)) ]
 
 
+/* Question 6*/
+
 /*----------------*/
 /* Protocol rules */
 /*----------------*/
-
-/* Question 1 here */
 rule Init_1:
   let gx = 'g'^~x
   in 
@@ -40,7 +40,7 @@ rule Init_1:
       !Pk(b, pkB),
       Fr(~x) ]
     -->
-    [ Out(<$A, aenc(gx, pkB)>),
+    [ Out(aenc(<$A, gx>, pkB)),
       Init_1($A, b, ~skA, pkB, ~x, gx) ]
 
 
@@ -50,26 +50,26 @@ rule Resp_1:
     [ !Key($B, ~skB),
       !Pk(a, pkA),
       Fr(~y),
-      In(<a, aenc(gx, pk(~skB))>) ]
+      In(aenc(<a, gx>, pk(~skB))) ]
     --[ RunningR($B, a, gx^~y) ]->
-    [ Out(<$B, aenc(<gy, h(gx)>, pkA)>),
+    [ Out(aenc(<$B, gy, h(gx)>, pkA)),
       Resp_1($B, a, ~skB, pkA, ~y, gy, gx) ]
 
 
 rule Init_2:
     [ Init_1($A, b, ~skA, pkB, ~x, gx),
-      In(<b, aenc(<gy, hgx>, pk(~skA))>) ]
+      In(aenc(<b, gy, hgx>, pk(~skA))) ]
     --[ Eq(h(gx), hgx),
         FinishedI($A),
         SecretI($A, b, gy^~x),
         RunningI($A, b, gy^~x),
         CommitI($A, b, gy^~x) ]->
-    [ Out(<$A, aenc(h(gy), pkB)>) ]
+    [ Out(aenc(<$A, h(gy)>, pkB)) ]
 
 
 rule Resp_2:
     [ Resp_1($B, a, ~skB, pkA, ~y, gy, gx), 
-      In(<a, aenc(hgy, pk(~skB))>)]
+      In(aenc(<a, hgy>, pk(~skB)))]
     --[ Eq(h(gy), hgy),
         FinishedR($B),
         SecretR(a, $B, gx^~y),
@@ -80,12 +80,13 @@ rule Resp_2:
 /* ---------- */
 /* Key Reveal */
 /* ---------- */
-
-/* Question 2 here */
 rule Compromise_Agent:
   [!Key(A, k)]
   --[Compromised(A)]->
   [Out(k)]
+
+
+
 
 
 /* ---------- */
@@ -108,9 +109,7 @@ lemma executableR:
 exists-trace "Ex #i B. FinishedR(B) @ i & not (Ex #j B. Compromised(B)@j)"
 
 
-/* Key secrecy:  (Question 3)
-   in all traces, if a key is marked as secret between two uncompromised agents,
-   then the attacker cannot learn it */
+/* Secrecy and agreement properties */
 
 lemma key_secrecyI:
 "All #i A B k.
@@ -125,11 +124,6 @@ lemma key_secrecyR:
   ==> not (Ex #j. K(k) @ j)"
 
 
-
-/* Key agreement:  (Question 4)
-Please uncomment the following two lemmas for this question.
-*/
-
 lemma agreementR:
 "All #i A B k.
   (CommitR( B, A, k) @ i &
@@ -138,8 +132,11 @@ lemma agreementR:
 
 lemma agreementI:
 "All #i A B k.
-  (CommitI(A, B, k) @ i &
+  (CommitI( A, B, k) @ i &
    not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
    ==> (Ex #j. RunningR(B, A, k) @ j & j < i)"
 
+
 end
+
+

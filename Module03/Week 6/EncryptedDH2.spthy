@@ -2,9 +2,9 @@ theory EncryptedDH2
 begin
 
 /* Signed Diffie-Hellman protocol, second attempt:
-   A -> B : A, aenc_B{A, g^x}  (x fresh)
-   B -> A : B, aenc_A{B, g^y, h(g^x)}  (y fresh)
-   A -> B : A, aenc_B{A, h(g^y)}  */
+   A -> B : aenc_B{A, g^x}  (x fresh)
+   B -> A : aenc_A{B, g^y, h(g^x)}  (y fresh)
+   A -> B : aenc_B{A, h(g^y)}  */
 
 
 /* ----------------- */
@@ -118,6 +118,5 @@ lemma agreementI:
 
 
 end
-
 
 
