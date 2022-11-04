@@ -61,6 +61,7 @@ rule Terminal_Sends_GPO:
     [ Out(<'GET_PROCESSING_OPTIONS', PDOL>),
       Terminal_Sent_GPO($Terminal, PDOL) ]
 
+
 // Offline
 rule Card_Responds_To_GPO_TC:
   let AC = MAC(f(~mk, ATC), PDOL, ATC)
@@ -78,7 +79,6 @@ rule Card_Responds_To_GPO_TC:
       Out(<'fDDA', 'TC', ATC, AC>),        // AIP = 'fDDA', CID = 'TC'
       Card_Responds_To_GPO_TC(~PAN, PDOL, ATC, AC)
     ] 
-
 
 // Online
 rule Card_Responds_To_GPO_ARQC:
@@ -130,9 +130,10 @@ rule Card_Sends_SDAD_TC:
     [ Card_Responds_To_GPO_TC(~PAN, PDOL, ATC, AC),
       In('READ_RECORD'),
       !LtkCard(~PAN, ~privkCard),
-      Fr(~nc) ]
+      Fr(~nc),
+      !IssuedBy(~PAN, $Issuer) ]
     --[ Running(~PAN, 'Terminal', <'Card', 'Terminal', transaction>),
-        Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>) ]->   // TODO: add Running (???) --> Mastercard1, line 119, 120
+        Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>) ]->
     [ Out(<~PAN, SDAD, ~nc>) ]
 
 // Online: Response to Read Record
@@ -145,12 +146,17 @@ rule Card_Sends_SDAD_ARQC:
     [ Card_Responds_To_GPO_ARQC(~PAN, PDOL, ATC, AC),
       In('READ_RECORD'),
       !LtkCard(~PAN, ~privkCard),
-      Fr(~nc) ]
+      Fr(~nc),
+      !IssuedBy(~PAN, $Issuer) ]
     --[ Running(~PAN, 'Terminal', <'Card', 'Terminal', transaction>),
-        Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>) ]->     // TODO: add Running (???) --> Mastercard1, line 133, 134
+        Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>) ]->
     [ Out(<~PAN, SDAD, ~nc>) ]
 
 
+
+
+
+// =========== Offline Data Authentication ============ //
 // Offline
 rule Terminal_Verify_SDAD_TC:
   let amount = fst(PDOL)
@@ -164,12 +170,6 @@ rule Terminal_Verify_SDAD_TC:
 
 // Online
 //  --> direclty done in Terminal_Receives_ARQC
-
-
-
-
-// =========== Offline Data Authentication ============ //
-
 
 
 
@@ -206,7 +206,7 @@ rule Terminal_Receives_IssuerAccept:
   let transaction = <~PAN, PDOL, ATC, AC> 
   in
     [ Terminal_Receives_ARQC($Terminal, ~PAN, PDOL, ATC, AC, ~channelID), 
-      Recv($Issuer, $Terminal, <~channelID, '2'>, <'ACCEPTED', ARPC>)]
+      Recv($Issuer, $Terminal, <~channelID, '2'>, <'ACCEPTED', ARPC>) ]
     --[ Online(),
         Commit('Terminal', ~PAN, <'Card', 'Terminal', transaction>),
         Commit($Terminal, $Issuer, <'Issuer', 'Terminal', transaction>),
@@ -281,22 +281,26 @@ lemma executable_online:
 // TODO: rewrite
 lemma auth_to_terminal_offline:
 "All PAN transaction #i. 
-    not(Online()@i) &
-    Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i
-    ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j)
+  (not(Online() @i) 
+    & Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i)
+  ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j)
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
 
 lemma auth_to_terminal_online:
-"All PAN Terminal Issuer transaction #i . 
-    Online() @i &
-    Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i & Commit(Terminal, Issuer, <'Issuer', 'Terminal', transaction>)@i
-    ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j) & (Ex #j. Running(Issuer, Terminal, <'Issuer', 'Terminal', transaction>) @j)
-        | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
+"All PAN Terminal Issuer transaction #i. 
+  (Online() @i 
+    & Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i 
+    & Commit(Terminal, Issuer, <'Issuer', 'Terminal', transaction>) @i)
+  ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j) 
+        & (Ex #k. Running(Issuer, Terminal, <'Issuer', 'Terminal', transaction>) @k)
+        | (Ex A #l. Honest(A) @ i & Compromise(A) @ l)"
     
 lemma auth_to_issuer:
-"All PAN Terminal Issuer transaction #i . 
-   Commit(Issuer, PAN, <'Card', 'Issuer', transaction>) @i & Commit(Issuer, Terminal, <'Terminal', 'Issuer', transaction>) @i //(Ex #k. Online() @k) & i < k &
-    ==> (Ex #j. Running(PAN, Issuer, <'Card', 'Issuer', transaction>) @j) & (Ex #j. Running(Terminal, Issuer, <'Terminal', 'Issuer', transaction>) @j) 
-        | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
+"All PAN Terminal Issuer transaction #i. 
+  (Commit(Issuer, PAN, <'Card', 'Issuer', transaction>) @i 
+    & Commit(Issuer, Terminal, <'Terminal', 'Issuer', transaction>) @i)
+  ==> (Ex #j. Running(PAN, Issuer, <'Card', 'Issuer', transaction>) @j) 
+        & (Ex #k. Running(Terminal, Issuer, <'Terminal', 'Issuer', transaction>) @k) 
+        | (Ex A #l. Honest(A) @ i & Compromise(A) @ l)"
 
 end
