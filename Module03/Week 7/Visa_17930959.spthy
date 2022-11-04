@@ -63,7 +63,7 @@ rule Terminal_Sends_GPO:
 
 
 // Offline
-rule Card_Responds_To_GPO_TC:
+rule Card_Responds_To_GPO:
   let AC = MAC(f(~mk, ATC), PDOL, ATC)
   in
     [ In(<'GET_PROCESSING_OPTIONS', PDOL>),
@@ -77,7 +77,7 @@ rule Card_Responds_To_GPO_TC:
     [
       //Things wo do Here as well
       Out(<'fDDA', 'TC', ATC, AC>),        // AIP = 'fDDA', CID = 'TC'
-      Card_Responds_To_GPO_TC(~PAN, PDOL, ATC, AC)
+      Card_Responds_To_GPO(~PAN, PDOL, ATC, AC)
     ] 
 
 // Online
@@ -127,7 +127,7 @@ rule Card_Sends_SDAD_TC:
       SDAD = sign(<un, amount, ~nc, ATC, 'fDDA'>, ~privkCard)
       transaction = <~PAN, PDOL, ATC, AC>
   in
-    [ Card_Responds_To_GPO_TC(~PAN, PDOL, ATC, AC),
+    [ Card_Responds_To_GPO(~PAN, PDOL, ATC, AC),
       In('READ_RECORD'),
       !LtkCard(~PAN, ~privkCard),
       Fr(~nc),
@@ -277,30 +277,28 @@ lemma executable_online:
 /////////////////////////////////////////////////////
 //           Security Properties                   //
 /////////////////////////////////////////////////////
-
-// TODO: rewrite
 lemma auth_to_terminal_offline:
 "All PAN transaction #i. 
   (not(Online() @i) 
     & Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i)
-  ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j)
-        | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
+  ==> ((Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j)
+        | (Ex C #k. Honest(C) @ i & Compromise(C) @ k))"
 
 lemma auth_to_terminal_online:
 "All PAN Terminal Issuer transaction #i. 
   (Online() @i 
     & Commit('Terminal', PAN, <'Card', 'Terminal', transaction>) @i 
     & Commit(Terminal, Issuer, <'Issuer', 'Terminal', transaction>) @i)
-  ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j) 
+  ==> ((Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', transaction>) @j) 
         & (Ex #k. Running(Issuer, Terminal, <'Issuer', 'Terminal', transaction>) @k)
-        | (Ex A #l. Honest(A) @ i & Compromise(A) @ l)"
+        | (Ex C #l. Honest(C) @ i & Compromise(C) @ l))"
     
 lemma auth_to_issuer:
 "All PAN Terminal Issuer transaction #i. 
   (Commit(Issuer, PAN, <'Card', 'Issuer', transaction>) @i 
     & Commit(Issuer, Terminal, <'Terminal', 'Issuer', transaction>) @i)
-  ==> (Ex #j. Running(PAN, Issuer, <'Card', 'Issuer', transaction>) @j) 
-        & (Ex #k. Running(Terminal, Issuer, <'Terminal', 'Issuer', transaction>) @k) 
-        | (Ex A #l. Honest(A) @ i & Compromise(A) @ l)"
+  ==> ((Ex #j. Running(Terminal, Issuer, <'Terminal', 'Issuer', transaction>) @j)
+        & (Ex #k. Running(PAN, Issuer, <'Card', 'Issuer', transaction>) @k)   
+        | (Ex C #l. Honest(C) @ i & Compromise(C) @ l))"
 
 end
