@@ -15,6 +15,7 @@ Score: 100/100
 [Files](./Module03/)   
 
 ### Module 04: Software Security
+[Files](./Module04/)
 
 ### Module 05: DDoS Attacks & Defenses
 
