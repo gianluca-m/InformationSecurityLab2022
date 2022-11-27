@@ -13,9 +13,11 @@ Score: 100/100
 
 ### Module 03: Tamarin Proofs
 [Files](./Module03/)   
+Score: 100/100
 
 ### Module 04: Software Security
 [Files](./Module04/)
+Score: 92/100
 
 ### Module 05: DDoS Attacks & Defenses
 
