@@ -16,10 +16,11 @@ Score: 100/100
 Score: 100/100
 
 ### Module 04: Software Security
-[Files](./Module04/)
+[Files](./Module04/)   
 Score: 92/100
 
 ### Module 05: DDoS Attacks & Defenses
+[Files](./Module05/)   
 
 ### Module 06: Trusted Execution Environments
 
