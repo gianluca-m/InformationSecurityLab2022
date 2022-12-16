@@ -15,7 +15,7 @@ TMP_TRACE_FILE_PATH = TMP_TRACES_FOLDER.joinpath("tmp_trace.txt")
 
 
 def create_trace(guess):
-    trace_program = f"../../../pin -t ./obj-intel64/SGXTrace.so -o {TMP_TRACE_FILE_PATH} -trace 1 -- /home/isl/t2_2/password_checker_2 {guess}"
+    trace_program = f"../../../pin -t ./obj-intel64/SGXTrace.so -o {TMP_TRACE_FILE_PATH} -trace 1 -- /home/isl/t2_2/password_checker_2 {guess} >/dev/null 2>&1"
     os.system(trace_program)
 
 
@@ -74,7 +74,7 @@ def main():
     output_file_path = output_folder.joinpath("oput_" + sys.argv[1])
 
     with open(output_file_path, "w") as output_file:
-        output_file.write(password + (",copmlete" if complete else ",partial"))
+        output_file.write(password + (",complete" if complete else ",partial"))
 
 
 if __name__ == "__main__":

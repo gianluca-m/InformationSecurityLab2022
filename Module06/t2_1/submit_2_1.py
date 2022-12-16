@@ -76,7 +76,7 @@ def main():
     output_file_path = output_folder.joinpath("oput_" + sys.argv[2])
 
     with open(output_file_path, "w") as output_file:
-        output_file.write(password + (",copmlete" if complete else ",partial"))
+        output_file.write(password + (",complete" if complete else ",partial"))
 
 
 if __name__ == "__main__":

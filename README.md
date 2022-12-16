@@ -23,5 +23,6 @@ Score: 92/100
 [Files](./Module05/)   
 
 ### Module 06: Trusted Execution Environments
+[Files](./Module06/)   
 
 ### Module 07: Security and Privacy in Machine Learning
