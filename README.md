@@ -21,8 +21,15 @@ Score: 92/100
 
 ### Module 05: DDoS Attacks & Defenses
 [Files](./Module05/)   
+Score: 79/100
 
 ### Module 06: Trusted Execution Environments
 [Files](./Module06/)   
 
 ### Module 07: Security and Privacy in Machine Learning
+[Files](./Module07/)   
+Score: 100/100
+
+---
+
+**Final score (best 6 out of 7): 571 / 600**
